@@ -99,8 +99,7 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 xSemaphoreHandle sem_usb_tx;
-xSemaphoreHandle mutex_usb;
-xQueueHandle queue_usb;
+MessageBufferHandle_t msg_buf_rx;
 volatile uint32_t usb_on = 0;
 
 /* USER CODE END PRIVATE_VARIABLES */
@@ -139,17 +138,17 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 void init_usb_rtos_obj(void){
 	sem_usb_tx = xSemaphoreCreateBinary();
-	mutex_usb = xSemaphoreCreateMutex();
-	queue_usb = xQueueCreate(768,sizeof(char)); //Consegue receber 768 caracteres sem descartar nada
+	msg_buf_rx = xMessageBufferCreate(768);
 	usb_on = 1;
 }
 uint32_t usb_is_on(){
 	return usb_on;
 }
 
+/*
 BaseType_t CDC_Receiveq_MS(char *data, TickType_t timeout){
 	return xQueueReceive(queue_usb, data, timeout);
-}
+}*/
 
 uint8_t read_usb_cdc(char *buffer, int buf_len, TickType_t timeout){
 	return xMessageBufferReceive(msg_buf_rx, buffer, buf_len, timeout);
@@ -206,6 +205,8 @@ static int8_t CDC_DeInit_FS(void)
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
   /* USER CODE BEGIN 5 */
+  portBASE_TYPE yield = pdFALSE;
+  char data = 0;
   switch(cmd)
   {
     case CDC_SEND_ENCAPSULATED_COMMAND:
@@ -254,6 +255,8 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
     case CDC_SET_CONTROL_LINE_STATE:
+  	  xMessageBufferSendFromISR(msg_buf_rx, &data, 1, &yield);
+  	  portYIELD_FROM_ISR(yield);
 
     break;
 
@@ -291,12 +294,8 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
 	USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 
-	uint32_t len = *Len;
-	while(len){
-		xQueueSendFromISR(queue_usb, Buf++, &yield);
-		len--;
-	}
-	portYIELD_FROM_ISR(yield);
+	  xMessageBufferSendFromISR(msg_buf_rx, Buf, *Len, &yield);
+	  portYIELD_FROM_ISR(yield);
 
 	return (USBD_OK);
   /* USER CODE END 6 */
@@ -317,6 +316,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
+  /*
   if(xSemaphoreTake(mutex_usb, portMAX_DELAY) == pdTRUE){
 	  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
 	  if (hcdc->TxState != 0){
@@ -327,7 +327,14 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 	  result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
 	  xSemaphoreTake(sem_usb_tx, portMAX_DELAY);
 	  xSemaphoreGive(mutex_usb);
+  }*/
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  if (hcdc->TxState != 0){
+    return USBD_BUSY;
   }
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+  result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  xSemaphoreTake(sem_usb_tx, portMAX_DELAY);
   /* USER CODE END 7 */
   return result;
 }
