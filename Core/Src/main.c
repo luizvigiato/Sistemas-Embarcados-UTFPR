@@ -34,6 +34,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define NewLine "# "
+#define MAX_INPUT_LENGTH    64
+#define MAX_OUTPUT_LENGTH   256
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -367,15 +370,25 @@ void StartDefaultTask(void *argument)
 			CDC_Transmit_FS((uint8_t *)"\n\r", 2);
 
 
-			CDC_Transmit_FS((uint8_t *)">> ", 3);
+			CDC_Transmit_FS((uint8_t *)NewLine , 2);
 		} else {
 			if( cRxedChar == '\0' ){
-				 CDC_Transmit_FS((uint8_t *) "Welcome to FreeRTOS\n\r\n\r>> ", strlen("Welcome to FreeRTOS\n\r\n\r>> "));
-			 }
+				CDC_Transmit_FS((uint8_t *) "Welcome to FreeRTOS\n\r# ", strlen((char *)"Welcome to FreeRTOS\n\r# "));
+			} else if (cRxedChar == 0x7F ){
+				/*
+				 * Backspace was pressed.
+				 */
+				if(cInputIndex > 0){
+					CDC_Transmit_FS(&cRxedChar, 1);
+					cInputIndex--;
+				}
+			} else if(cInputIndex < MAX_INPUT_LENGTH){
 			/*
 			 * Replica digitado para tela
 			 */
-			CDC_Transmit_FS(&cRxedChar, 1);
+				CDC_Transmit_FS(&cRxedChar, 1);
+				cInputIndex++;
+			}
 		}
   }
   /* USER CODE END 5 */
