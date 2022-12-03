@@ -14,7 +14,7 @@
 
 ### Trabalho final da disciplina de sistemas embarcados
 
-1. [ x ] Substituir a fila de recepção de dados da USB por um objeto do FreeRTOS que seja mais eficiente para receber dados em blocos, com tamanho variável;
+1. [x] Substituir a fila de recepção de dados da USB por um objeto do FreeRTOS que seja mais eficiente para receber dados em blocos, com tamanho variável;
 
 2. [ ] Implementar uma tarefa servidor, que será responsável por gerenciar a impressão de dados no terminal, eliminando a necessidade de um mutex para gerenciar o recurso compartilhado;
 
