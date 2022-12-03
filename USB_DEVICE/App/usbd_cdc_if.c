@@ -25,7 +25,6 @@
 
 #include "FreeRTOS.h"
 #include "semphr.h"
-#include "task.h"
 #include "queue.h"
 #include "message_buffer.h"
 /* USER CODE END INCLUDE */
@@ -55,7 +54,6 @@
 
 /* USER CODE BEGIN PRIVATE_TYPES */
 MessageBufferHandle_t msg_buf_rx;
-SemaphoreHandle_t sem_usb_tx;
 /* USER CODE END PRIVATE_TYPES */
 
 /**
@@ -100,7 +98,8 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-
+xSemaphoreHandle sem_usb_tx;
+xSemaphoreHandle mutex_usb;
 xQueueHandle queue_usb;
 volatile uint32_t usb_on = 0;
 
@@ -140,8 +139,8 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 void init_usb_rtos_obj(void){
 	sem_usb_tx = xSemaphoreCreateBinary();
-	msg_buf_rx = xMessageBufferCreate(768);
-	//queue_usb = xQueueCreate(768,sizeof(char)); //Consegue receber 768 caracteres sem descartar nada
+	mutex_usb = xSemaphoreCreateMutex();
+	queue_usb = xQueueCreate(768,sizeof(char)); //Consegue receber 768 caracteres sem descartar nada
 	usb_on = 1;
 }
 uint32_t usb_is_on(){
@@ -255,8 +254,6 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
     case CDC_SET_CONTROL_LINE_STATE:
-  	  xMessageBufferSendFromISR(msg_buf_rx, &data, 1, &yield);
-  	  portYIELD_FROM_ISR(yield);
 
     break;
 
