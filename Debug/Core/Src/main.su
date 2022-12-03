@@ -6,5 +6,6 @@
 ../Core/Src/main.c:291:13:MX_DMA_Init	16	static
 ../Core/Src/main.c:309:13:MX_GPIO_Init	48	static
 ../Core/Src/main.c:337:19:prvTaskStatsCommand	32	static
-../Core/Src/main.c:373:6:StartDefaultTask	64	static
-../Core/Src/main.c:457:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:357:19:prvTaskStatsTexto	32	static
+../Core/Src/main.c:387:6:StartDefaultTask	64	static
+../Core/Src/main.c:472:6:Error_Handler	4	static,ignoring_inline_asm
