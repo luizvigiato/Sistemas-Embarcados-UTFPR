@@ -18,6 +18,6 @@
 
 2. [x] Implementar uma tarefa servidor, que será responsável por gerenciar a impressão de dados no terminal, eliminando a necessidade de um mutex para gerenciar o recurso compartilhado;
 
-3. [ ] Implementar um console/terminal a partir do FreeRTOS+IO
+3. [X] Implementar um console/terminal a partir do FreeRTOS+CLI
 
 4. [ ] Implementar pelo menos 3 comandos no terminal, sendo obrigatoriamente um deles a listagem das tarefas instaladas no sistema e outro a listagem de harmônicas de um sinal recebido por um conversor A/D do microcontrolador. O terceiro comando é de livre escolha.
