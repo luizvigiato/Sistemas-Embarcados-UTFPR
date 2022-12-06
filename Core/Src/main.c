@@ -26,6 +26,7 @@
 //#include "FreeRTOS.h"
 #include "FreeRTOS_CLI.h"
 #include "usbd_cdc_if.h"
+#include "arm_const_structs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,7 +38,7 @@
 /* USER CODE BEGIN PD */
 #define NewLine "# "
 #define MAX_INPUT_LENGTH    64
-#define MAX_OUTPUT_LENGTH   256
+#define MAX_OUTPUT_LENGTH   512
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -85,6 +86,11 @@ typedef struct led_t_ {
 
 led_t green_led;
 
+uint16_t adcBuffer[256];
+
+float ReIm[256*2];
+float mod[256];
+
 void task_led(void *param){
 	led_t *led = (led_t *)param;
 	while(1){
@@ -93,16 +99,31 @@ void task_led(void *param){
 	}
 }
 
-void task_usb(void *param){
-	while(!usb_is_on()){
-		vTaskDelay(100);
-	}
+void task_adc(void *param){
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, 256);
+	HAL_TIM_Base_Start(&htim2);
+
+
+
 	while(1){
+		int k = 0;
+		for(int i = 0; i < 256; i++){
+			ReIm[k] = (float) adcBuffer[i] * 0.0007326007;
+			ReIm[k+1] = 0.0;
+			k += 2;
+		}
 
-		(void) CDC_Transmit_FS((uint8_t *) "Teste de USB 2\n\r",16);
+		arm_cfft_f32(&arm_cfft_sR_f32_len256,ReIm,0,1);
+		arm_cmplx_mag_f32(ReIm,mod,256);
+		arm_scale_f32(mod, 0.0078125, mod, 128); /* vertor, por quem quero multiplicar, vetor final, quantos pontos */
 
+		volatile float fund_phase = atan2f(ReIm[3],ReIm[2])*180/M_PI;
+		(void) fund_phase;
+		vTaskDelay(5);
 	}
 }
+
+
 
 /* USER CODE END 0 */
 
@@ -170,6 +191,7 @@ int main(void)
   green_led.port = LED_GPIO_Port;
   green_led.pin = LED_Pin;
   xTaskCreate(task_led,"Tarefa Led",256, &green_led, 1, NULL);
+  xTaskCreate(task_adc,"Tarefa ADC",256, &green_led, 2, NULL);
   //xTaskCreate(task_usb,"Tarefa USB",256, &green_led, 5, NULL);
   /* USER CODE END RTOS_THREADS */
 
@@ -303,7 +325,6 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
@@ -311,8 +332,8 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 32656;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.Period = 21000000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
@@ -323,28 +344,15 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
 
 }
 
@@ -458,7 +466,7 @@ void StartDefaultTask(void *argument)
   FreeRTOS_CLIRegisterCommand( &xTasksCommand );
   FreeRTOS_CLIRegisterCommand( &xTasksTexto );
   BaseType_t xMoreDataToFollow;
-  uint8_t cRxedChar, buffer[32], cInputIndex = 0;
+  uint8_t cRxedChar, buffer[256], cInputIndex = 0;
   /* Infinite loop */
   for(;;)
   {
