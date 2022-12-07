@@ -68,8 +68,8 @@ all: main-build
 main-build: testertos.elf secondary-outputs
 
 # Tool invocations
-testertos.elf testertos.map: $(OBJS) $(USER_OBJS) /home/luiz/STM32CubeIDE/wokspace/testertos/STM32F401CDUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "testertos.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/luiz/STM32CubeIDE/wokspace/testertos/STM32F401CDUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testertos.map" -Wl,--gc-sections -static -L"/home/luiz/STM32CubeIDE/wokspace/testertos/cmsis/lib" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+testertos.elf testertos.map: $(OBJS) $(USER_OBJS) /home/luiz/Documents/UTFPR/Embarcados/Sistemas-Embarcados-UTFPR/STM32F401CDUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "testertos.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/luiz/Documents/UTFPR/Embarcados/Sistemas-Embarcados-UTFPR/STM32F401CDUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testertos.map" -Wl,--gc-sections -static -L"/home/luiz/Documents/UTFPR/Embarcados/Sistemas-Embarcados-UTFPR/cmsis/lib" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

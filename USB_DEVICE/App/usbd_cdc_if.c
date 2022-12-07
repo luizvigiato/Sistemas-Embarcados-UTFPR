@@ -27,6 +27,7 @@
 #include "semphr.h"
 #include "queue.h"
 #include "message_buffer.h"
+#include "FreeRTOS_CLI.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -165,9 +166,10 @@ uint8_t read_usb_cdc(char *buffer, int buf_len, TickType_t timeout){
 	return xMessageBufferReceive(msg_buf_rx, buffer, buf_len, timeout);
 }
 
-//void queue_print(char *data,int size){
+void queue_print(char *data,int size){
+	CDC_Receiveq_FS(data,portMAX_DELAY);
 //	xMessageBufferSend(msg_buf_tx,data,size,portMAX_DELAY);
-//}
+}
 
 void Print_Task(void * param){
 	char buffer[768];
@@ -207,7 +209,8 @@ void Print_Task(void * param){
 			pcInputString[pcIndexInput] = '\0';
 		} else {
 			if( xRchar == '\0' ){
-				CDC_Transmit_FS((uint8_t *) "Welcome to FreeRTOS\n\r# ", strlen((char *)"Welcome to FreeRTOS\n\r# "));
+				CDC_Transmit_FS((uint8_t *) "Welcome to FreeRTOS\n\r", strlen((char *)"Welcome to FreeRTOS\n\r"));
+				CDC_Transmit_FS((uint8_t *)NewLine, 2);
 			} else if (xRchar == 0x7F ){
 				/*
 				 * Backspace was pressed.

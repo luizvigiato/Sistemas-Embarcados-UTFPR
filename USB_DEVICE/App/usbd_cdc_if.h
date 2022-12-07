@@ -111,7 +111,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 void init_usb_rtos_obj(void);
 uint32_t usb_is_on();
-
+void queue_print(char *data,int size);
 
 
 /* USER CODE END EXPORTED_FUNCTIONS */
