@@ -86,7 +86,15 @@ typedef struct led_t_ {
 	int timeout;
 }led_t;
 
+typedef struct led_rgb_{
+	uint8_t brilho;
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+}led_rgb;
+
 led_t green_led;
+led_rgb rgb;
 
 uint16_t adcBuffer[256];
 
@@ -193,6 +201,10 @@ int main(void)
   green_led.timeout = 500;
   green_led.port = LED_GPIO_Port;
   green_led.pin = LED_Pin;
+  rgb.red = 200;
+  rgb.green = 200;
+  rgb.blue = 200;
+  rgb.brilho = 200;
   xTaskCreate(task_led,"Tarefa Led",256, &green_led, 1, NULL);
   xTaskCreate(task_adc,"Tarefa ADC",256, &green_led, 2, NULL);
   //xTaskCreate(task_usb,"Tarefa USB",256, &green_led, 5, NULL);
@@ -509,10 +521,14 @@ static BaseType_t prvTaskStatsTexto( char *pcWriteBuffer, size_t xWriteBufferLen
 	return pdFALSE;
 }
 
-static BaseType_t prvTaskStatsLed( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ){
+static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ){
 	const char *pcParameter1;
+	const char *pcParameterAux;;
 	BaseType_t xParameter1StringLength;
-	int tempo;
+	char comando1[7];
+	int16_t brilho;
+	int16_t red,green,blue;
+	comando1[0] = '\0';
 	pcParameter1 = FreeRTOS_CLIGetParameter
 	                        (
 	                          /* The command string itself. */
@@ -522,16 +538,84 @@ static BaseType_t prvTaskStatsLed( char *pcWriteBuffer, size_t xWriteBufferLen, 
 	                          /* Store the parameter string length. */
 	                          &xParameter1StringLength
 	                        );
-	tempo = atoi(pcParameter1);
-	if(tempo < 901 && tempo > 99){
-		green_led.timeout = tempo;
-		strcpy(pcWriteBuffer,(char*)"Led alterado para: ");
-		strcpy( pcWriteBuffer + strlen(pcWriteBuffer),pcParameter1);
-		strcpy( pcWriteBuffer + strlen(pcWriteBuffer),"ms\n\r");
-	} else {
-		strcpy(pcWriteBuffer,"Valor digitado nao corresponde a valor valido \n\r");
-	}
 
+	strncpy(comando1,pcParameter1,xParameter1StringLength);
+	if(strcmp(comando1,(const char *)"on") == (int)0){
+//		Habilitar o led RGB
+//		Basicamente iniciar o TIM3
+		HAL_TIM_Base_Start(&htim3);
+		strcpy(pcWriteBuffer,"Led Ligado \n\r");
+	} else if(strcmp(comando1,(const char *)"off") == 0){
+//		Desabilitar o led RGB
+//		Basicamente parar o TIM3
+		HAL_TIM_Base_Stop(&htim3);
+		strcpy(pcWriteBuffer,"Led Desligado \n\r");
+	} else if(strcmp(comando1,(const char *)"brilho") == 0){
+//		calculo do brilho do led RGB
+
+		pcParameterAux = FreeRTOS_CLIGetParameter
+		                        (
+		                          /* The command string itself. */
+		                          pcCommandString,
+		                          /* Return the first parameter. */
+		                          2,
+		                          /* Store the parameter string length. */
+		                          &xParameter1StringLength
+		                        );
+		strncpy(comando1,pcParameterAux,xParameter1StringLength);
+		brilho = atoi(comando1);
+		if(brilho >= 0 && brilho < 256){
+			rgb.brilho = brilho;
+			strcpy(pcWriteBuffer,"Brilho redefinido \n\r");
+		} else {
+			strcpy(pcWriteBuffer,"Valor invalido \n\r");
+		}
+
+	} else if(strcmp(comando1,(const char *)"color") == 0){
+		pcParameterAux = FreeRTOS_CLIGetParameter
+		                        (
+		                          /* The command string itself. */
+		                          pcCommandString,
+		                          /* Return the first parameter. */
+		                          2,
+		                          /* Store the parameter string length. */
+		                          &xParameter1StringLength
+		                        );
+		strncpy(comando1,pcParameterAux,xParameter1StringLength);
+		red = atoi(comando1);
+		pcParameterAux = FreeRTOS_CLIGetParameter
+		                        (
+		                          /* The command string itself. */
+		                          pcCommandString,
+		                          /* Return the first parameter. */
+		                          3,
+		                          /* Store the parameter string length. */
+		                          &xParameter1StringLength
+		                        );
+		strncpy(comando1,pcParameterAux,xParameter1StringLength);
+		green = atoi(comando1);
+		pcParameterAux = FreeRTOS_CLIGetParameter
+		                        (
+		                          /* The command string itself. */
+		                          pcCommandString,
+		                          /* Return the first parameter. */
+		                          4,
+		                          /* Store the parameter string length. */
+		                          &xParameter1StringLength
+		                        );
+		strncpy(comando1,pcParameterAux,xParameter1StringLength);
+		blue = atoi(comando1);
+		if(blue >= 0 && blue < 256 && red >= 0 && red < 256 && blue >=0 && blue < 256){
+			rgb.blue = blue;
+			rgb.red = red;
+			rgb.green = green;
+		}
+	}
+//	strcpy(pcWriteBuffer,valor);
+
+	TIM3->CCR1 = rgb.brilho*rgb.red;
+	TIM3->CCR2 = rgb.brilho*rgb.green;
+	TIM3->CCR3 = rgb.brilho*rgb.blue;
 	return pdFALSE;
 }
 
@@ -561,12 +645,14 @@ static const CLI_Command_Definition_t xTasksTexto =
     0
 };
 
-static const CLI_Command_Definition_t xTasksLed =
+static const CLI_Command_Definition_t xTasksRGB =
 {
-    "altled",
-	"\r\naltled:\r\n digite um valor entre 100 a 900\r\n\r\n",
-	prvTaskStatsLed,
-    1
+    "rgb",
+	"\r\nrgb:\r\n rgb (on/off) (para desligar ou ligar)\n\r"
+	" rgb brilho (0-255) (para alterar intensidade do brilho)\r\n\r\n"
+	" rgb color (0-255) (0-255) (0-255) (para alterar a proporcao red gree blue)\r\n\r\n",
+	prvTaskStatsRGB,
+    -1
 };
 
 static const CLI_Command_Definition_t xTasksHarmonica =
@@ -597,7 +683,7 @@ void StartDefaultTask(void *argument)
 
   FreeRTOS_CLIRegisterCommand( &xTasksCommand );
   FreeRTOS_CLIRegisterCommand( &xTasksTexto );
-  FreeRTOS_CLIRegisterCommand( &xTasksLed );
+  FreeRTOS_CLIRegisterCommand( &xTasksRGB );
   FreeRTOS_CLIRegisterCommand( &xTasksHarmonica );
 
 //  BaseType_t xMoreDataToFollow;
