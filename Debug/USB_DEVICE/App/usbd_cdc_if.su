@@ -3,10 +3,10 @@
 ../USB_DEVICE/App/usbd_cdc_if.c:161:12:CDC_Receiveq_FS	16	static
 ../USB_DEVICE/App/usbd_cdc_if.c:165:9:read_usb_cdc	24	static
 ../USB_DEVICE/App/usbd_cdc_if.c:169:6:queue_print	16	static
-../USB_DEVICE/App/usbd_cdc_if.c:174:6:Print_Task	1440	static
-../USB_DEVICE/App/usbd_cdc_if.c:254:15:CDC_Init_FS	8	static
-../USB_DEVICE/App/usbd_cdc_if.c:268:15:CDC_DeInit_FS	4	static
-../USB_DEVICE/App/usbd_cdc_if.c:282:15:CDC_Control_FS	24	static,ignoring_inline_asm
-../USB_DEVICE/App/usbd_cdc_if.c:367:15:CDC_Receive_FS	24	static,ignoring_inline_asm
-../USB_DEVICE/App/usbd_cdc_if.c:392:9:CDC_Transmit_FS	24	static
-../USB_DEVICE/App/usbd_cdc_if.c:420:15:CDC_TransmitCplt_FS	32	static,ignoring_inline_asm
+../USB_DEVICE/App/usbd_cdc_if.c:174:6:Print_Task	1376	static
+../USB_DEVICE/App/usbd_cdc_if.c:261:15:CDC_Init_FS	8	static
+../USB_DEVICE/App/usbd_cdc_if.c:275:15:CDC_DeInit_FS	4	static
+../USB_DEVICE/App/usbd_cdc_if.c:289:15:CDC_Control_FS	24	static,ignoring_inline_asm
+../USB_DEVICE/App/usbd_cdc_if.c:374:15:CDC_Receive_FS	24	static,ignoring_inline_asm
+../USB_DEVICE/App/usbd_cdc_if.c:399:9:CDC_Transmit_FS	24	static
+../USB_DEVICE/App/usbd_cdc_if.c:427:15:CDC_TransmitCplt_FS	32	static,ignoring_inline_asm

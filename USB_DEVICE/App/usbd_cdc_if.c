@@ -148,7 +148,7 @@ void init_usb_rtos_obj(void){
 	/*
 	 *
 	 */
-	xTaskCreate(Print_Task,"Impressao",256, NULL, 1, NULL);
+	xTaskCreate(Print_Task,"Impressao",256, NULL, 5, NULL);
 	usb_on = 1;
 }
 
@@ -174,7 +174,7 @@ void queue_print(char *data,int size){
 void Print_Task(void * param){
 	char buffer[768];
 	uint8_t qtd=0;
-	uint8_t pcInputString[128], pcIndexInput = 0,pcOutputString[512];
+	uint8_t pcInputString[64], pcIndexInput = 0,pcOutputString[512];
 	uint8_t xRchar;
 
 	BaseType_t xMoreDataToFollow;
@@ -206,21 +206,28 @@ void Print_Task(void * param){
 			CDC_Transmit_FS((uint8_t *) "\n\r# ", 4);
 //			CDC_Transmit_FS((uint8_t *)pcInputString, pcIndexInput);
 			pcIndexInput = 0;
-			pcInputString[pcIndexInput] = '\0';
 		} else {
 			if( xRchar == '\0' ){
-				CDC_Transmit_FS((uint8_t *) "Welcome to FreeRTOS\n\r", strlen((char *)"Welcome to FreeRTOS\n\r"));
+				CDC_Transmit_FS((uint8_t *)"Welcome to FreeRTOS\n\r", 21);
 				CDC_Transmit_FS((uint8_t *)NewLine, 2);
+				pcIndexInput = 0;
 			} else if (xRchar == 0x7F ){
 				/*
 				 * Backspace was pressed.
 				 */
 				if(pcIndexInput > 0){
 					CDC_Transmit_FS(&xRchar, 1);
-
-					pcInputString[pcIndexInput] = '\0';
 					pcIndexInput--;
+					pcInputString[pcIndexInput] = '\0';
+
 				}
+			} else if(xRchar == 0x1B){
+				/*
+				 * Entrou no seta pra cima
+				 */
+				CDC_Transmit_FS(pcInputString, strlen((const char*)pcInputString));
+				pcIndexInput = strlen((const char*)pcInputString)+1;
+				pcIndexInput--;
 			} else if(pcIndexInput < 64){
 				(void) qtd;
 				CDC_Transmit_FS(&xRchar, qtd);

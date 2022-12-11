@@ -39,6 +39,7 @@
 
 #define MAX_INPUT_LENGTH    256
 #define MAX_OUTPUT_LENGTH   256
+#define MAX_RGB 254
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -102,6 +103,8 @@ float ReIm[256*2];
 float mod[256];
 float fase;
 
+TaskHandle_t task_handle_RGB = NULL;
+
 void task_led(void *param){
 	led_t *led = (led_t *)param;
 	while(1){
@@ -127,10 +130,48 @@ void task_adc(void *param){
 
 		volatile float fund_phase = atan2f(ReIm[3],ReIm[2])*180/M_PI;
 		fase = fund_phase;
-		vTaskDelay(5);
 	}
 }
 
+void task_RGB(void *param){
+	uint8_t r,g,b;
+	uint8_t ts;
+	r = g = b = 1;
+	ts = 0;
+	vTaskSuspend(NULL);
+	while(1){
+		//TIM3->CCR1 =
+		if(ts == 0){//Crescendo RGB colorido
+			if(r < MAX_RGB){
+				TIM3->CCR1 = r * 257;
+				r++;
+			} else if(g < MAX_RGB){
+				TIM3->CCR2 = g * 257;
+				g++;
+			} else if(b < MAX_RGB){
+				TIM3->CCR3 = b * 257;
+				b++;
+			}else{
+				ts = 1;
+			}
+		} else {
+			if(r > 1){
+				TIM3->CCR1 = r * 257;
+				r--;
+			} else if( g > 1){
+				TIM3->CCR2 = g * 257;
+				g--;
+			} else if( b > 0){
+				TIM3->CCR3 = b * 257;
+				b--;
+			} else {
+				ts = 0;
+			}
+		}
+
+		vTaskDelay(1);
+	}
+}
 
 
 /* USER CODE END 0 */
@@ -206,7 +247,8 @@ int main(void)
   rgb.blue = 200;
   rgb.brilho = 200;
   xTaskCreate(task_led,"Tarefa Led",256, &green_led, 1, NULL);
-  xTaskCreate(task_adc,"Tarefa ADC",256, &green_led, 2, NULL);
+  xTaskCreate(task_adc,"Tarefa ADC",256, NULL, 5, NULL);
+  xTaskCreate(task_RGB,"Tarefa RGB",256, NULL, 2, &task_handle_RGB);
   //xTaskCreate(task_usb,"Tarefa USB",256, &green_led, 5, NULL);
   /* USER CODE END RTOS_THREADS */
 
@@ -304,7 +346,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -313,7 +355,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -347,8 +389,8 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 21000000;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim2.Init.Period = 1253;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
@@ -359,8 +401,8 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_ENABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
@@ -511,12 +553,6 @@ static BaseType_t prvTaskStatsCommand( char *pcWriteBuffer, size_t xWriteBufferL
 
 static BaseType_t prvTaskStatsTexto( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ){
 
-	/*
-	HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);
-//	uint32_t teste;
-//	teste = TIM3->CCR1;
-	TIM3->CCR1 = 32000;
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);*/
 	strcpy(pcWriteBuffer,(char*)"Este e um texto teste\r\n");
 	return pdFALSE;
 }
@@ -540,6 +576,7 @@ static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, 
 	                        );
 
 	strncpy(comando1,pcParameter1,xParameter1StringLength);
+	comando1[xParameter1StringLength] = '\0';
 	if(strcmp(comando1,(const char *)"on") == (int)0){
 //		Habilitar o led RGB
 //		Basicamente iniciar o TIM3
@@ -549,6 +586,8 @@ static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, 
 //		Desabilitar o led RGB
 //		Basicamente parar o TIM3
 		HAL_TIM_Base_Stop(&htim3);
+		vTaskSuspend(task_handle_RGB);
+		rgb.brilho=0;
 		strcpy(pcWriteBuffer,"Led Desligado \n\r");
 	} else if(strcmp(comando1,(const char *)"brilho") == 0){
 //		calculo do brilho do led RGB
@@ -609,7 +648,17 @@ static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, 
 			rgb.blue = blue;
 			rgb.red = red;
 			rgb.green = green;
+			strcpy(pcWriteBuffer,"Cor redefinido \n\r");
+		} else {
+			strcpy(pcWriteBuffer,"Valor invalido \n\r");
 		}
+	} else if(strcmp(comando1,(const char *)"rgb") == 0){
+
+		HAL_TIM_Base_Start(&htim3);
+		vTaskResume(task_handle_RGB);
+		rgb.blue = 0;
+		rgb.red = 0;
+		rgb.green = 0;
 	}
 //	strcpy(pcWriteBuffer,valor);
 
@@ -649,8 +698,9 @@ static const CLI_Command_Definition_t xTasksRGB =
 {
     "rgb",
 	"\r\nrgb:\r\n rgb (on/off) (para desligar ou ligar)\n\r"
-	" rgb brilho (0-255) (para alterar intensidade do brilho)\r\n\r\n"
-	" rgb color (0-255) (0-255) (0-255) (para alterar a proporcao red gree blue)\r\n\r\n",
+	" rgb brilho (0-255) (para alterar intensidade do brilho)\r\n"
+	" rgb color (0-255) (0-255) (0-255) (para alterar a proporcao red gree blue)\r\n\r\n"
+	" rgb rgb (para ativar RGB automatico)\r\n\r\n",
 	prvTaskStatsRGB,
     -1
 };
