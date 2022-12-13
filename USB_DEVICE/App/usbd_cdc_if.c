@@ -148,7 +148,7 @@ void init_usb_rtos_obj(void){
 	/*
 	 *
 	 */
-	xTaskCreate(Print_Task,"Impressao",256, NULL, 5, NULL);
+	xTaskCreate(Print_Task,"Impressao",512, NULL, 5, NULL);
 	usb_on = 1;
 }
 

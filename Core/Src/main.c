@@ -27,6 +27,7 @@
 #include "FreeRTOS_CLI.h"
 #include "usbd_cdc_if.h"
 #include "arm_const_structs.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -130,6 +131,7 @@ void task_adc(void *param){
 
 		volatile float fund_phase = atan2f(ReIm[3],ReIm[2])*180/M_PI;
 		fase = fund_phase;
+		vTaskDelay(5);
 	}
 }
 
@@ -389,7 +391,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1253;
+  htim2.Init.Period = 950;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -559,7 +561,7 @@ static BaseType_t prvTaskStatsTexto( char *pcWriteBuffer, size_t xWriteBufferLen
 
 static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ){
 	const char *pcParameter1;
-	const char *pcParameterAux;;
+	const char *pcParameterAux;
 	BaseType_t xParameter1StringLength;
 	char comando1[7];
 	int16_t brilho;
@@ -670,11 +672,50 @@ static BaseType_t prvTaskStatsRGB( char *pcWriteBuffer, size_t xWriteBufferLen, 
 
 
 static BaseType_t prvTaskStatsHarmonica( char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString ){
-	strcpy(pcWriteBuffer,(char*)"Este e Harmonica XXXXX\r\n");
+	const char *pcParameter1;
+	const char *pcParameterAux;
+	BaseType_t xParameter1StringLength;
+	char comando1[5];
+	char restorno[5];
+	uint8_t valor1,valor2;
+	comando1[0] = '\0';
+	pcParameter1 = FreeRTOS_CLIGetParameter
+	                        (
+	                          /* The command string itself. */
+	                          pcCommandString,
+	                          /* Return the first parameter. */
+	                          1,
+	                          /* Store the parameter string length. */
+	                          &xParameter1StringLength
+	                        );
+
+	strncpy(comando1,pcParameter1,xParameter1StringLength);
+	comando1[xParameter1StringLength] = '\0';
+	if(strcmp(comando1,(const char *)"cc") == (int)0){
+		strcpy(pcWriteBuffer,(char*)"Este e o nivel CC do sinal: ");
+		uint8_t aux;
+		float auxf;
+		auxf = (((uint8_t)mod[0])*0.5);
+		aux = (uint8_t) mod[0];
+		valor1 = (uint8_t) auxf;
+		valor2 = (uint8_t) ((mod[0]-aux)*10);
+		if(auxf > 1){
+
+		}
+
+		restorno[0] = 48+valor1;
+		restorno[1] = '.';
+		restorno[2] = 48+valor2;
+		restorno[3] = '\0';
+		strcpy(pcWriteBuffer,(char*)restorno);
+	}
+	/*
+	strcpy(pcWriteBuffer,(char*)"Este e Harmonica \r\n");
 	char valor[15];
 	int positivo = (int) fase*100;
 	itoa(positivo,valor,10);
-	strcpy(pcWriteBuffer + strlen(pcWriteBuffer),valor);
+	strcpy(pcWriteBuffer + strlen(pcWriteBuffer),comando1);
+	*/
 	return pdFALSE;
 }
 
@@ -708,9 +749,10 @@ static const CLI_Command_Definition_t xTasksRGB =
 static const CLI_Command_Definition_t xTasksHarmonica =
 {
     "harmonica",
-	"\r\nharmonica:\r\n fundamental, nivel cc, freq\r\n\r\n",
+	"\r\nharmonica:\r\n fundamental, quantidade sequencial\r\n\r\n"
+	"\r\nharmonica:\r\n cc, primeira fundamental \r\n\r\n",
 	prvTaskStatsHarmonica,
-    0
+    -1
 };
 
 /* USER CODE END 4 */
