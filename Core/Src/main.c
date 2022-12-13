@@ -391,7 +391,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 950;
+  htim2.Init.Period = 949;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -676,7 +676,7 @@ static BaseType_t prvTaskStatsHarmonica( char *pcWriteBuffer, size_t xWriteBuffe
 	const char *pcParameterAux;
 	BaseType_t xParameter1StringLength;
 	char comando1[5];
-	char restorno[5];
+	char restorno[6];
 	uint8_t valor1,valor2;
 	comando1[0] = '\0';
 	pcParameter1 = FreeRTOS_CLIGetParameter
@@ -693,21 +693,60 @@ static BaseType_t prvTaskStatsHarmonica( char *pcWriteBuffer, size_t xWriteBuffe
 	comando1[xParameter1StringLength] = '\0';
 	if(strcmp(comando1,(const char *)"cc") == (int)0){
 		strcpy(pcWriteBuffer,(char*)"Este e o nivel CC do sinal: ");
-		uint8_t aux;
 		float auxf;
-		auxf = (((uint8_t)mod[0])*0.5);
-		aux = (uint8_t) mod[0];
+		auxf = (mod[0]*0.5);
 		valor1 = (uint8_t) auxf;
-		valor2 = (uint8_t) ((mod[0]-aux)*10);
-		if(auxf > 1){
-
-		}
-
+		valor2 = (uint8_t) ((auxf-valor1)*10);
 		restorno[0] = 48+valor1;
 		restorno[1] = '.';
 		restorno[2] = 48+valor2;
-		restorno[3] = '\0';
-		strcpy(pcWriteBuffer,(char*)restorno);
+		valor2 = (uint8_t) ((((auxf-valor1)*10)-valor2)*10 );
+		restorno[3] = 48+valor2;
+		restorno[4] = '\0';
+		strcpy(pcWriteBuffer + strlen(pcWriteBuffer),(char*)restorno);
+	} else {
+		uint8_t harm;
+		harm = atoi(comando1);
+		if(harm > 0 && harm < 255){
+			uint8_t i, qnt;
+			strcpy(pcWriteBuffer,(char*)"Este e a hamornica iniciada com ");
+			strcpy(pcWriteBuffer + strlen(pcWriteBuffer),comando1);
+			strcpy(pcWriteBuffer + strlen(pcWriteBuffer),(char*)": ");
+			comando1[0] = '\0';
+			pcParameterAux = FreeRTOS_CLIGetParameter
+				                        (
+				                          /* The command string itself. */
+				                          pcCommandString,
+				                          /* Return the first parameter. */
+				                          2,
+				                          /* Store the parameter string length. */
+				                          &xParameter1StringLength
+				                        );
+
+			strncpy(comando1,pcParameterAux,xParameter1StringLength);
+			comando1[xParameter1StringLength] = '\0';
+			qnt = atoi(pcParameterAux);
+			if(qnt > 0 && qnt < 128){
+				float auxf;
+				for(i = harm; i < (harm+qnt);i++){
+					auxf = (mod[i]*0.5);
+					valor1 = (uint8_t) auxf;
+					valor2 = (uint8_t) ((auxf-valor1)*10);
+					restorno[0] = 48+valor1;
+					restorno[1] = '.';
+					restorno[2] = 48+valor2;
+					valor2 = (uint8_t) ((((auxf-valor1)*10)-valor2)*10 );
+					restorno[3] = 48+valor2;
+					if(i < (harm+qnt-1)){
+						restorno[4] = ',';
+						restorno[5] = ' ';
+					} else {
+						restorno[4] = '\0';
+					}
+					strcpy(pcWriteBuffer + strlen(pcWriteBuffer),(char*)restorno);
+				}
+			}
+		}
 	}
 	/*
 	strcpy(pcWriteBuffer,(char*)"Este e Harmonica \r\n");
